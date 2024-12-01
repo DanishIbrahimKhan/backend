@@ -30,7 +30,7 @@ app.get("/movie-by-title/:t", async (req, res) => {
 app.get("/movie-by-id/:id", async (req, res) => {
     const { id } = req.params;
     try {
-      const response = await axios.get(`${OMDB_BASE_URL}?id=${encodeURIComponent(t)}&apikey=${OMDB_API_KEY}`);
+      const response = await axios.get(`${OMDB_BASE_URL}?i=${encodeURIComponent(t)}&apikey=${OMDB_API_KEY}`);
       console.log("OMDB API Response:", response.data); // Debugging
   
       if (response.data.Response === "True") {
