@@ -6,32 +6,49 @@ import mongoose from "mongoose";
 const app = express();
 const port = 9000;
 
-// MongoDB Atlas connection
+// MongoDB Atlas connection with a connection singleton pattern
+let isConnected = false;
 const MONGO_URI = "mongodb+srv://mrdanishibrahim:Ot18DiBsq5layODP@cluster0.iavub.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
-mongoose
-  .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("Connected to MongoDB Atlas"))
-  .catch((err) => console.error("Error connecting to MongoDB Atlas:", err));
+const connectToMongoDB = async () => {
+  if (!isConnected) {
+    try {
+      await mongoose.connect(MONGO_URI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        connectTimeoutMS: 10000, // Increased connection timeout
+        serverSelectionTimeoutMS: 5000 // Increased server selection timeout
+      });
+      isConnected = true;
+      console.log("Connected to MongoDB Atlas");
+    } catch (err) {
+      console.error("Error connecting to MongoDB Atlas:", err);
+    }
+  }
+};
 
-// Define the movie schema with userEmail field
+// Movie Schema
 const movieSchema = new mongoose.Schema({
   imdbID: { type: String, required: true, unique: true },
   title: { type: String, required: true },
   year: { type: String },
   poster: { type: String },
-  userEmail: { type: String, required: true }, // Added userEmail to associate with a specific user
+  userEmail: { type: String, required: true },
 });
 
 const Movie = mongoose.model("Movie", movieSchema);
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
+// OMDB API setup
 const OMDB_API_KEY = "3aa28eff";
 const OMDB_BASE_URL = "http://www.omdbapi.com/";
 
-// Route to get movie by title
+// Routes
+
+// Get movie by title
 app.get("/movie-by-title/:t", async (req, res) => {
   const { t } = req.params;
   try {
@@ -46,7 +63,7 @@ app.get("/movie-by-title/:t", async (req, res) => {
   }
 });
 
-// Route to get movie by IMDB ID
+// Get movie by IMDB ID
 app.get("/movie-by-id/:id", async (req, res) => {
   const { id } = req.params;
   try {
@@ -61,26 +78,21 @@ app.get("/movie-by-id/:id", async (req, res) => {
   }
 });
 
-// Route to save a movie to a user's favorites
+// Save movie to favorites
 app.post("/favorites", async (req, res) => {
   const { imdbID, title, year, poster, userEmail } = req.body;
 
-  // Check if userEmail is provided
   if (!userEmail) {
     return res.status(400).json({ error: "User email is required" });
   }
 
   try {
-    // Check if the movie already exists for the user
     const existingMovie = await Movie.findOne({ imdbID, userEmail });
     if (existingMovie) {
       return res.status(400).json({ error: "Movie already in favorites" });
     }
 
-    // Create a new movie document
     const movie = new Movie({ imdbID, title, year, poster, userEmail });
-
-    // Save the movie to the database
     await movie.save();
     res.status(201).json({ message: "Movie saved to favorites!" });
   } catch (error) {
@@ -92,7 +104,7 @@ app.post("/favorites", async (req, res) => {
   }
 });
 
-// Route to get all movies for a specific user
+// Get all favorites for a user
 app.get("/favorites/:userEmail", async (req, res) => {
   const { userEmail } = req.params;
 
@@ -107,7 +119,8 @@ app.get("/favorites/:userEmail", async (req, res) => {
   }
 });
 
-// Server listening on port
+// Start server
 app.listen(port, () => {
+  connectToMongoDB(); // Ensure connection is made when the app starts
   console.log(`Server running on port ${port}`);
 });
