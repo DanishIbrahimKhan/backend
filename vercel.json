@@ -1,10 +1,5 @@
 {
   "version": 2,
-    "functions": {
-      "api/favorites.js": {
-        "timeout": 30
-      }
-    },
   "builds": [
     {
       "src": "./index.js",
